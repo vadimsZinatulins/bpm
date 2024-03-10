@@ -36,7 +36,10 @@ fun App(
     fileManager: FileManager
 ) {
     MaterialTheme {
-        Navigator(DatabasesListScreen(fileManager)) { navigator ->
+        val startingScreen = Home()
+        // val startingScreen = DatabasesListScreen(fileManager)
+
+        Navigator(startingScreen) { navigator ->
             Scaffold(
                 topBar = {
                     Text(navigator.lastItem.key.split(".").last(), modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
