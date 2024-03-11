@@ -1,5 +1,7 @@
 package screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,7 +16,9 @@ import androidx.compose.runtime.Composable
 import cafe.adriel.voyager.core.screen.Screen
 import utils.storage.FileManager
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
@@ -38,13 +42,17 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import components.GenericDialog
 import data.Database
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 
 class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
 
-        var databases by remember { mutableStateOf(Database.getDatabases(fileManager)) }
+        Database.updateDatabases(fileManager)
+
+        var databases by remember { mutableStateOf(Database.databases) }
         var databaseToDelete by remember { mutableStateOf<Database?>(null) }
         var databaseToOpen by remember { mutableStateOf<Database?>(null) }
 
@@ -52,7 +60,8 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             databaseToDelete?.let { it: Database ->
                 fileManager.deleteFile(it.fileName)
                 databaseToDelete = null
-                databases = Database.getDatabases(fileManager)
+                Database.updateDatabases(fileManager)
+                databases = Database.databases
             }
         }
 
@@ -73,7 +82,12 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             }
 
             if (databases.isEmpty()) {
-                Text("No databases found", modifier = Modifier.fillMaxWidth(), fontSize = 32.sp, textAlign = TextAlign.Center)
+                Text(
+                    "No databases found",
+                    modifier = Modifier.fillMaxWidth(),
+                    fontSize = 32.sp,
+                    textAlign = TextAlign.Center
+                )
             }
 
             Spacer(modifier = Modifier.size(28.dp))
@@ -84,7 +98,18 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             ) {
                 items(databases) { database ->
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Color(0.5f, 0.8f, 1.0f, 0.3f),
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .border(
+                                2.dp,
+                                Color(0.5f, 0.8f, 1.0f, 1.0f),
+                                shape = RoundedCornerShape(18.dp)
+                            )
+                            .padding(12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
@@ -93,12 +118,19 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
                             modifier = Modifier
                                 .align(Alignment.CenterVertically)
                                 .weight(1f)
-                                .clickable { databaseToOpen = database }
+                                .clickable {
+                                    if (database.isOpen) {
+                                        navigator.replace(DatabaseScreen(database))
+                                    } else {
+                                        databaseToOpen = database
+                                    }
+                                }
                         )
                         Icon(
                             Icons.Default.Delete,
                             "Delete ${database.fileName}",
-                            modifier = Modifier.align(Alignment.CenterVertically).clickable { databaseToDelete = database },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                                .clickable { databaseToDelete = database },
                             tint = Color.Red
                         )
                     }
@@ -131,7 +163,7 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             }
         }
 
-        if(isNewDatabaseDialogOpen) {
+        if (isNewDatabaseDialogOpen) {
             NewDatabaseDialog({ isNewDatabaseDialogOpen = false }, { fileName, password ->
                 onNewFileAdded(fileName, password)
                 isNewDatabaseDialogOpen = false
@@ -140,33 +172,67 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     }
 
     @Composable
-    private fun OpenDatabaseDialog(database: Database?, onCancel: () -> Unit, onConfirm: () -> Unit = {}) {
+    private fun OpenDatabaseDialog(
+        database: Database?,
+        onCancel: () -> Unit,
+        onConfirm: () -> Unit = {}
+    ) {
         var password by remember { mutableStateOf("") }
         var isPasswordValid by remember { mutableStateOf(true) }
+        var isLoading by remember { mutableStateOf(false) }
 
         database?.let { db: Database ->
+            val onConfirmAction = if (!isLoading) {
+                {
+                    isLoading = true
+                    Thread {
+                        Thread.sleep(500)
+                        try {
+                            db.open(password)
+                            MainScope().launch {
+                                isLoading = false
+                                onConfirm()
+                            }
+                        } catch (e: Exception) {
+                            MainScope().launch{
+                                isLoading = false
+                                isPasswordValid = false
+                            }
+                        }
+                    }.start()
+                }
+            } else null
+
+            val onCancelAction = if (!isLoading) {
+                onCancel
+            } else null
+
             GenericDialog(
                 title = "Open ${db.fileName}?",
-                onCancel = onCancel,
-                onConfirm = {
-                    println("Trying to open database with password $password")
-
-                    try {
-                        db.open(password)
-                        onConfirm()
-                    } catch (e: Exception) {
-                        isPasswordValid = false
-                    }
-                },
+                onCancel = onCancelAction,
+                onConfirm = onConfirmAction,
                 onDismiss = { },
             ) {
-                PasswordField("Password", password, onChange = { password = it }, isError = !isPasswordValid)
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                } else {
+                    PasswordField(
+                        "Password",
+                        password,
+                        onChange = { password = it },
+                        isError = !isPasswordValid
+                    )
+                }
             }
         }
     }
 
     @Composable
-    private fun DeleteDatabaseDialog(database: Database?, onConfirm: () -> Unit = {}, onCancel: () -> Unit = {}) {
+    private fun DeleteDatabaseDialog(
+        database: Database?,
+        onConfirm: () -> Unit = {},
+        onCancel: () -> Unit = {}
+    ) {
         database?.let { db: Database ->
             GenericDialog(
                 title = "Delete ${db.fileName}?",
@@ -180,24 +246,38 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     }
 
     @Composable
-    private fun NewDatabaseDialog(onCancel: () -> Unit, onAccept: (fileName: String, password: String) -> Unit) {
+    private fun NewDatabaseDialog(
+        onCancel: () -> Unit,
+        onAccept: (fileName: String, password: String) -> Unit
+    ) {
         var fileName by remember { mutableStateOf("") }
         var password by remember { mutableStateOf("") }
         var passwordConfirmation by remember { mutableStateOf("") }
 
-        val isFilenameValid = fileName.isNotEmpty() && !fileName.contains("[\\s/\\\\?*:|\"<>]+".toRegex())
+        val isFilenameValid =
+            fileName.isNotEmpty() && !fileName.contains("[\\s/\\\\?*:|\"<>]+".toRegex())
         val isPasswordValid = password.isNotEmpty() && password == passwordConfirmation
 
         GenericDialog(
             title = "New Database",
             onDismiss = onCancel
         ) {
-            Column (
+            Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                OutlinedTextField(value = fileName, onValueChange = { fileName = it }, label = { Text("Database Name") }, isError = fileName.isNotEmpty() && fileName.contains("[\\s/\\\\?*:|\"<>]+".toRegex()), singleLine = true)
+                OutlinedTextField(
+                    value = fileName,
+                    onValueChange = { fileName = it },
+                    label = { Text("Database Name") },
+                    isError = fileName.isNotEmpty() && fileName.contains("[\\s/\\\\?*:|\"<>]+".toRegex()),
+                    singleLine = true
+                )
                 PasswordField("Password", password) { password = it }
-                PasswordField("Password Confirmation", passwordConfirmation, isError = passwordConfirmation.isNotEmpty() && passwordConfirmation != password) { passwordConfirmation = it }
+                PasswordField(
+                    "Password Confirmation",
+                    passwordConfirmation,
+                    isError = passwordConfirmation.isNotEmpty() && passwordConfirmation != password
+                ) { passwordConfirmation = it }
                 Spacer(modifier = Modifier.size(28.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -207,7 +287,10 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
                         Text("Cancel")
                     }
                     Spacer(modifier = Modifier.size(8.dp))
-                    Button(onClick = { onAccept(fileName, password) }, enabled = passwordConfirmation.isNotEmpty() && isFilenameValid && isPasswordValid) {
+                    Button(
+                        onClick = { onAccept(fileName, password) },
+                        enabled = passwordConfirmation.isNotEmpty() && isFilenameValid && isPasswordValid
+                    ) {
                         Text("Create")
                     }
                 }
@@ -216,7 +299,12 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     }
 
     @Composable
-    private fun PasswordField(label: String, value: String, isError: Boolean = false, onChange : (String) -> Unit = {}) {
+    private fun PasswordField(
+        label: String,
+        value: String,
+        isError: Boolean = false,
+        onChange: (String) -> Unit = {}
+    ) {
         var isPasswordVisible by remember { mutableStateOf(false) }
 
         OutlinedTextField(
@@ -227,10 +315,15 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             isError = isError,
             trailingIcon = {
-                val icon = if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
+                val icon =
+                    if (isPasswordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff
                 val description = if (isPasswordVisible) "Hide password" else "Show password"
                 val tint = if (isPasswordVisible) Color.DarkGray else Color.LightGray
-                Icon(icon, description, tint = tint, modifier = Modifier.clickable { isPasswordVisible = !isPasswordVisible })
+                Icon(
+                    icon,
+                    description,
+                    tint = tint,
+                    modifier = Modifier.clickable { isPasswordVisible = !isPasswordVisible })
             }
         )
     }

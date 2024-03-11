@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.Button
@@ -28,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
+import data.Database
+import screens.DatabaseScreen
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
@@ -46,13 +49,25 @@ fun App(
                 },
                 bottomBar = {
                     LazyRow(
-                        modifier = Modifier.fillMaxWidth().background(Color(0xFFE0F2F1)),
+                        modifier = Modifier.fillMaxWidth().background(Color(0xFFE0F2F1)).padding(12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                     ) {
+                        Database.databases.filter { database ->
+                            var result = database.isOpen
+                            if (navigator.lastItem is DatabaseScreen) {
+                                val screen = navigator.lastItem as DatabaseScreen
+                                result = result && screen.database.fileName != database.fileName
+                            }
+
+                            result
+                        } .map {
+                            item { BottomBarButton(it.fileName.split('.').first()) { navigator.push(DatabaseScreen(it)) } }
+                        }
+
                         if (navigator.lastItem !is DatabasesListScreen) {
                             item { BottomBarButton("Open Database") { navigator.push(DatabasesListScreen(fileManager)) } }
                         }
-                        item { BottomBarButton("Personal DB") { /* TODO */ } }
+
                         item { BottomBarButton("Settings") { /* TODO */ } }
                     }
                 }
