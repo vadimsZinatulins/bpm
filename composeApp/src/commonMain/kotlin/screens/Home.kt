@@ -18,21 +18,6 @@ import utils.security.BPMCipher
 class Home : Screen {
     @Composable
     override fun Content() {
-        var password by remember { mutableStateOf("cona") }
-        var content by remember { mutableStateOf("") }
 
-        val key = BPMCipher.passwordToKey(password, BPMCipher.generateSalt()).encoded
-
-        val encryptedText = BPMCipher.encrypt(content, key)
-
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            OutlinedTextField(value = password, label = { Text("Password") }, onValueChange = { password = it })
-            OutlinedTextField(value = content, label = { Text("Content") }, onValueChange = { content = it })
-            Text(encryptedText)
-        }
     }
 }

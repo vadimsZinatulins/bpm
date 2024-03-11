@@ -1,6 +1,5 @@
 package screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,10 +19,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.getValue
@@ -38,29 +34,45 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import components.GenericDialog
+import data.Database
 
 class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     @Composable
     override fun Content() {
-        var files by remember { mutableStateOf(fileManager.listFiles()) }
-        var fileToDelete by remember { mutableStateOf("") }
+        val navigator = LocalNavigator.currentOrThrow
 
-        val deleteFile = {
-            fileManager.deleteFile(fileToDelete)
-            fileToDelete = ""
-            files = fileManager.listFiles()
+        var databases by remember { mutableStateOf(Database.getDatabases(fileManager)) }
+        var databaseToDelete by remember { mutableStateOf<Database?>(null) }
+        var databaseToOpen by remember { mutableStateOf<Database?>(null) }
+
+        val deleteDatabase: () -> Unit = {
+            databaseToDelete?.let { it: Database ->
+                fileManager.deleteFile(it.fileName)
+                databaseToDelete = null
+                databases = Database.getDatabases(fileManager)
+            }
         }
 
-        val cancelFileDeletion = { fileToDelete = "" }
+        val openDatabase: () -> Unit = {
+            databaseToOpen?.let { it: Database ->
+                navigator.replace(DatabaseScreen(it))
+            }
+        }
+
+        val cancelDatabaseDeletion = { databaseToDelete = null }
+        val cancelDatabaseOpening = { databaseToOpen = null }
 
         Column {
             NewDatabase { fileName, password ->
-                fileManager.saveFile(fileName, password)
-                files = fileManager.listFiles()
+                val newDatabase = Database.newDatabase(fileName, password, fileManager)
+
+                navigator.replace(DatabaseScreen(newDatabase))
             }
 
-            if (files.isEmpty()) {
+            if (databases.isEmpty()) {
                 Text("No databases found", modifier = Modifier.fillMaxWidth(), fontSize = 32.sp, textAlign = TextAlign.Center)
             }
 
@@ -70,24 +82,38 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                items(files) { file ->
+                items(databases) { database ->
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(file.name.split(".").first(), fontSize = 24.sp, modifier = Modifier.align(Alignment.CenterVertically))
+                        Text(
+                            database.fileName.split(".").first(),
+                            fontSize = 24.sp,
+                            modifier = Modifier
+                                .align(Alignment.CenterVertically)
+                                .weight(1f)
+                                .clickable { databaseToOpen = database }
+                        )
                         Icon(
                             Icons.Default.Delete,
-                            "Delete ${file.name}",
-                            modifier = Modifier.align(Alignment.CenterVertically).clickable {
-                                fileToDelete = file.name
-                            },
+                            "Delete ${database.fileName}",
+                            modifier = Modifier.align(Alignment.CenterVertically).clickable { databaseToDelete = database },
                             tint = Color.Red
                         )
                     }
                 }
             }
-            DeleteDatabaseDialog(fileToDelete, deleteFile, cancelFileDeletion)
+            OpenDatabaseDialog(
+                database = databaseToOpen,
+                onCancel = cancelDatabaseOpening,
+                onConfirm = openDatabase
+            )
+            DeleteDatabaseDialog(
+                database = databaseToDelete,
+                onConfirm = deleteDatabase,
+                onCancel = cancelDatabaseDeletion
+            )
         }
     }
 
@@ -114,15 +140,41 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
     }
 
     @Composable
-    private fun DeleteDatabaseDialog(filename: String, onConfirm: () -> Unit = {}, onCancel: () -> Unit = {}) {
-        if (filename.isNotEmpty()) {
+    private fun OpenDatabaseDialog(database: Database?, onCancel: () -> Unit, onConfirm: () -> Unit = {}) {
+        var password by remember { mutableStateOf("") }
+        var isPasswordValid by remember { mutableStateOf(true) }
+
+        database?.let { db: Database ->
             GenericDialog(
-                title = "Delete $filename?",
+                title = "Open ${db.fileName}?",
+                onCancel = onCancel,
+                onConfirm = {
+                    println("Trying to open database with password $password")
+
+                    try {
+                        db.open(password)
+                        onConfirm()
+                    } catch (e: Exception) {
+                        isPasswordValid = false
+                    }
+                },
+                onDismiss = { },
+            ) {
+                PasswordField("Password", password, onChange = { password = it }, isError = !isPasswordValid)
+            }
+        }
+    }
+
+    @Composable
+    private fun DeleteDatabaseDialog(database: Database?, onConfirm: () -> Unit = {}, onCancel: () -> Unit = {}) {
+        database?.let { db: Database ->
+            GenericDialog(
+                title = "Delete ${db.fileName}?",
                 onCancel = onCancel,
                 onConfirm = onConfirm,
                 onDismiss = onCancel,
             ) {
-                Text("Are you sure you want to delete $filename?")
+                Text("Are you sure you want to delete ${db.fileName}?")
             }
         }
     }

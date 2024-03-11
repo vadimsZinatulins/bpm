@@ -14,22 +14,22 @@ abstract class FileManager {
      * @param fileName name of the file
      * @param content content of the file
      */
-    fun saveFile(fileName: String, content: String) {
+    fun saveFile(fileName: String, content: ByteArray) {
         val file = File(bpmDirectory, "$fileName.bpm")
         FileOutputStream(file).use {
-            it.write(content.toByteArray())
+            it.write(content)
         }
     }
 
     /**
      * Read file from bpm directory
      * @param fileName name of the file
-     * @return content of the file
+     * @return file content
      */
-    fun readFile(fileName: String): String {
-        val file = File(bpmDirectory, "$fileName.bpm")
+    fun readFile(fileName: String): ByteArray {
+        val file = File(bpmDirectory, fileName)
 
-        return file.readText()
+        return file.readBytes()
     }
 
     /**

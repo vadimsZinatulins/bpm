@@ -1,25 +1,15 @@
 package utils.security
 
 import java.security.SecureRandom
+import java.security.Security
 import java.util.Base64
 import javax.crypto.Cipher
 import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 object BPMCipher {
-    /**
-     * Generate a random salt
-     * @param size The size of the salt to generate (optional, default is 16)
-     */
-    fun generateSalt(size: Int = 16): ByteArray {
-        val random = SecureRandom()
-        val salt = ByteArray(size)
-        random.nextBytes(salt)
-
-        return salt
-    }
-
     /**
      * Generate a key from a password and a salt
      * @param password The password to generate the key from
@@ -27,7 +17,7 @@ object BPMCipher {
      * @param keyLength The length of the key to generate (optional, default is 256)
      * @param iterationCount The number of iterations to use (optional, default is 65536)
      */
-    fun passwordToKey(password: String, salt: ByteArray, keyLength: Int = 256, iterationCount: Int = 65536): SecretKeySpec {
+    private fun passwordToKey(password: String, salt: ByteArray, keyLength: Int = 256, iterationCount: Int = 65536): SecretKeySpec {
         val keySpec = PBEKeySpec(password.toCharArray(), salt, iterationCount, keyLength)
         val keyFactory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
         val keyBytes = keyFactory.generateSecret(keySpec).encoded
@@ -35,17 +25,47 @@ object BPMCipher {
         return SecretKeySpec(keyBytes, "AES")
     }
 
-    fun encrypt(content: String, key: ByteArray): String {
-        val secretKey = SecretKeySpec(key, "AES")
-        val cipher = Cipher.getInstance("AES/ECB/PKCS5Padding")
+    /**
+     * Encrypt a string
+     * @param content The content to encrypt
+     * @param key The key to use
+     */
+    fun encrypt(content: String, key: String): ByteArray {
+        val secureRandom = SecureRandom()
 
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey)
+        val salt = ByteArray(16)
+        secureRandom.nextBytes(salt)
 
-        val cipherText: ByteArray = cipher.doFinal(content.toByteArray())
-        return Base64.getEncoder().encodeToString(cipherText)
+        val iv = ByteArray(16)
+        secureRandom.nextBytes(iv)
+
+        val secretKey = passwordToKey(key, salt)
+
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
+        val encryptedContent = cipher.doFinal(content.toByteArray())
+
+        return salt + iv + encryptedContent
     }
 
-    fun decrypt(content: ByteArray, password: String) {
+    /**
+     * Decrypt a string
+     * @param content The content to decrypt
+     * @param password The password to use
+     */
+    fun decrypt(content: ByteArray, password: String): String {
+        val salt = content.copyOfRange(0, 16)
+        val iv = content.copyOfRange(16, 32)
+        val encryptedContent = content.copyOfRange(32, content.size)
 
+        val secretKey = passwordToKey(password, salt)
+
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+        val decryptedContent = cipher.doFinal(encryptedContent)
+
+        return String(decryptedContent)
     }
 }
