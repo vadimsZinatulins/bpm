@@ -3,19 +3,24 @@ package screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.runtime.Composable
 import cafe.adriel.voyager.core.screen.Screen
 import utils.storage.FileManager
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
@@ -23,9 +28,14 @@ import androidx.compose.material.Icon
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.HdrPlus
+import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,13 +84,10 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
         val cancelDatabaseDeletion = { databaseToDelete = null }
         val cancelDatabaseOpening = { databaseToOpen = null }
 
-        Column {
-            NewDatabase { fileName, password ->
-                val newDatabase = Database.newDatabase(fileName, password, fileManager)
+        Column(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
 
-                navigator.replace(DatabaseScreen(newDatabase))
-            }
-
+        ) {
             if (databases.isEmpty()) {
                 Text(
                     "No databases found",
@@ -89,64 +96,58 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
                     textAlign = TextAlign.Center
                 )
             }
-
-            Spacer(modifier = Modifier.size(28.dp))
-
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier.fillMaxWidth().padding(16.dp).weight(1f)
             ) {
                 items(databases) { database ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(
-                                Color(0.5f, 0.8f, 1.0f, 0.3f),
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .border(
-                                2.dp,
-                                Color(0.5f, 0.8f, 1.0f, 1.0f),
-                                shape = RoundedCornerShape(18.dp)
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = rememberRipple(color = Color(0.3f, 0.5f, 0.8f))
+                            ) { if (database.isOpen) navigator.replace(DatabaseScreen(database)) else databaseToOpen = database }
+                            .padding(24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        Text(
-                            database.fileName.split(".").first(),
-                            fontSize = 24.sp,
-                            modifier = Modifier
-                                .align(Alignment.CenterVertically)
-                                .weight(1f)
-                                .clickable {
-                                    if (database.isOpen) {
-                                        navigator.replace(DatabaseScreen(database))
-                                    } else {
-                                        databaseToOpen = database
-                                    }
-                                }
-                        )
                         Icon(
-                            Icons.Default.Delete,
-                            "Delete ${database.fileName}",
-                            modifier = Modifier.align(Alignment.CenterVertically)
-                                .clickable { databaseToDelete = database },
-                            tint = Color.Red
+                            Icons.Default.Storage,
+                            "New Database",
+                            tint = Color(0.5f, 0.8f, 1.0f),
+                            modifier = Modifier.size(40.dp)
                         )
+                        Column(
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
+                            Text(
+                                database.fileName.split(".").first(),
+                                fontSize = 28.sp
+                            )
+                            Text(
+                                "Last modified on 12/12/2021 at 12:35",
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             }
-            OpenDatabaseDialog(
-                database = databaseToOpen,
-                onCancel = cancelDatabaseOpening,
-                onConfirm = openDatabase
-            )
-            DeleteDatabaseDialog(
-                database = databaseToDelete,
-                onConfirm = deleteDatabase,
-                onCancel = cancelDatabaseDeletion
-            )
+            NewDatabase { fileName, password ->
+                val newDatabase = Database.newDatabase(fileName, password, fileManager)
+
+                navigator.replace(DatabaseScreen(newDatabase))
+            }
         }
+        OpenDatabaseDialog(
+            database = databaseToOpen,
+            onCancel = cancelDatabaseOpening,
+            onConfirm = openDatabase
+        )
+        DeleteDatabaseDialog(
+            database = databaseToDelete,
+            onConfirm = deleteDatabase,
+            onCancel = cancelDatabaseDeletion
+        )
     }
 
     @Composable
@@ -158,9 +159,15 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            Button(onClick = { isNewDatabaseDialogOpen = true }) {
-                Text("New Database")
-            }
+            Icon(
+                Icons.Default.Add,
+                "New Database",
+                tint = Color(0xFF7AB0D0),
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(Color.White, CircleShape)
+                    .clickable { isNewDatabaseDialogOpen = true }
+            )
         }
 
         if (isNewDatabaseDialogOpen) {
@@ -184,22 +191,13 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
         database?.let { db: Database ->
             val onConfirmAction = if (!isLoading) {
                 {
-                    isLoading = true
-                    Thread {
-                        Thread.sleep(500)
-                        try {
-                            db.open(password)
-                            MainScope().launch {
-                                isLoading = false
-                                onConfirm()
-                            }
-                        } catch (e: Exception) {
-                            MainScope().launch{
-                                isLoading = false
-                                isPasswordValid = false
-                            }
-                        }
-                    }.start()
+                    val onSuccess: () -> Unit = { MainScope().launch { onConfirm() } }
+                    val onError: () -> Unit = { MainScope().launch {
+                        isLoading = false
+                        isPasswordValid = false
+                    }}
+
+                    db.open(password, onSuccess, onError)
                 }
             } else null
 

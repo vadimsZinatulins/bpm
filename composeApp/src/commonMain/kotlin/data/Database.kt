@@ -2,7 +2,6 @@ package data
 
 import utils.security.BPMCipher
 import utils.storage.FileManager
-import javax.crypto.Cipher
 
 class Database(val fileName: String, private val fileManager: FileManager) {
     val groups = mutableListOf<Group>()
@@ -14,11 +13,19 @@ class Database(val fileName: String, private val fileManager: FileManager) {
 
     }
 
-    fun open(password: String) {
-        val fileContent = fileManager.readFile(fileName)
-        val decryptedContent = BPMCipher.decrypt(fileContent, password)
+    fun open(password: String, onSuccess: () -> Unit, onError: () -> Unit) {
+        Thread {
+            try {
+                val fileContent = fileManager.readFile(fileName)
+                val decryptedContent = BPMCipher.decrypt(fileContent, password)
 
-        isOpen = true
+                isOpen = true
+
+                onSuccess()
+            } catch (e: Exception) {
+                onError()
+            }
+        }.start()
     }
 
     companion object {

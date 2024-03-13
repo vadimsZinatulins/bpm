@@ -1,11 +1,16 @@
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.Button
@@ -25,9 +30,17 @@ import screens.DatabasesListScreen
 import screens.Home
 import utils.storage.FileManager
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.Icon
+import androidx.compose.material.TabRowDefaults.Divider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import cafe.adriel.voyager.core.screen.uniqueScreenKey
 import data.Database
 import screens.DatabaseScreen
@@ -49,26 +62,29 @@ fun App(
                 },
                 bottomBar = {
                     LazyRow(
-                        modifier = Modifier.fillMaxWidth().background(Color(0xFFE0F2F1)).padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
+                        modifier = Modifier.fillMaxWidth().background(Color.White).padding(4.dp, 0.dp),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Database.databases.filter { database ->
-                            var result = database.isOpen
-                            if (navigator.lastItem is DatabaseScreen) {
-                                val screen = navigator.lastItem as DatabaseScreen
-                                result = result && screen.database.fileName != database.fileName
+                        println("Updating Bottom Bar...")
+
+                        Database.databases
+                            .filter { database ->
+                                var result = database.isOpen
+
+                                if(navigator.lastItem is DatabaseScreen) {
+                                    result = result && (navigator.lastItem as DatabaseScreen).database.fileName == database.fileName
+                                }
+
+                                result
                             }
-
-                            result
-                        } .map {
-                            item { BottomBarButton(it.fileName.split('.').first()) { navigator.push(DatabaseScreen(it)) } }
+                            .map {
+                                item {BottomBarButton(it.fileName.split('.').first(), Icons.Default.Lock, navigator.lastItem is DatabaseScreen) { navigator.push(DatabaseScreen(it)) }
+                            }
                         }
 
-                        if (navigator.lastItem !is DatabasesListScreen) {
-                            item { BottomBarButton("Open Database") { navigator.push(DatabasesListScreen(fileManager)) } }
-                        }
-
-                        item { BottomBarButton("Settings") { /* TODO */ } }
+                        item { BottomBarButton("Open", Icons.Default.Lock, isSelected = navigator.lastItem is DatabasesListScreen ) { navigator.push(DatabasesListScreen(fileManager)) } }
+                        item { BottomBarButton("Settings", Icons.Default.Settings) {  } }
                     }
                 }
             ) {
@@ -80,9 +96,36 @@ fun App(
 }
 
 @Composable
-fun BottomBarButton(text: String, onClick: () -> Unit) {
-    val textSize = 15
-    val displayedText = if(text.length > textSize) text.take(textSize) + "..." else text
-
-    Button(onClick = onClick, modifier = Modifier.width(180.dp)) { Text(displayedText) }
+fun BottomBarButton(text: String, icon: ImageVector, isSelected: Boolean = false, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if(isSelected) {
+            Icon(
+                icon,
+                text,
+                modifier = Modifier
+                    // .background(Color.Red)
+                    .offset(y = (-6).dp)
+                    .background(Color(0xFF9FCFE6), CircleShape)
+                    .border(2.dp, Color.White, CircleShape)
+                    .size(38.dp)
+                    .padding(6.dp),
+                tint = Color.White
+            )
+        } else {
+            Icon(
+                icon,
+                text,
+                modifier = Modifier
+                    // .background(Color.Red)
+                    .size(38.dp)
+                    .padding(6.dp),
+                tint = Color.LightGray
+            )
+        }
+        Text(text = text, modifier = Modifier.offset(y = (-6).dp), fontSize = 12.sp, color = if(isSelected) Color.Black else Color.LightGray)
+    }
 }

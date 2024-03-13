@@ -8,7 +8,6 @@ import data.Database
 class DatabaseScreen(val database: Database): Screen {
     @Composable
     override fun Content() {
-        Text(database.fileName)
     }
 
 }
