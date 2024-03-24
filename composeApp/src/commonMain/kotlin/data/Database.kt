@@ -1,5 +1,6 @@
 package data
 
+import androidx.compose.runtime.mutableStateListOf
 import utils.security.BPMCipher
 import utils.storage.FileManager
 
@@ -29,6 +30,7 @@ class Database(val fileName: String, private val fileManager: FileManager) {
     }
 
     companion object {
+        var mutableDatabases = mutableStateListOf<Database>()
         var databases: List<Database> = emptyList()
             private set
 

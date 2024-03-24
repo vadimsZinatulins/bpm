@@ -54,13 +54,17 @@ import components.GenericDialog
 import data.Database
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import utils.ServiceLocator
 
-class DatabasesListScreen(private val fileManager: FileManager) : Screen {
+class DatabasesListScreen : Screen {
+
+    private val fm by lazy { ServiceLocator.getService<FileManager>("FileManager") }
+
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
 
-        Database.updateDatabases(fileManager)
+        Database.updateDatabases(fm)
 
         var databases by remember { mutableStateOf(Database.databases) }
         var databaseToDelete by remember { mutableStateOf<Database?>(null) }
@@ -68,9 +72,9 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
 
         val deleteDatabase: () -> Unit = {
             databaseToDelete?.let { it: Database ->
-                fileManager.deleteFile(it.fileName)
+                fm.deleteFile(it.fileName)
                 databaseToDelete = null
-                Database.updateDatabases(fileManager)
+                Database.updateDatabases(fm)
                 databases = Database.databases
             }
         }
@@ -85,7 +89,7 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
         val cancelDatabaseOpening = { databaseToOpen = null }
 
         Column(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.9f),
+            modifier = Modifier.fillMaxSize(),
 
         ) {
             if (databases.isEmpty()) {
@@ -120,20 +124,14 @@ class DatabasesListScreen(private val fileManager: FileManager) : Screen {
                         Column(
                             modifier = Modifier.align(Alignment.CenterVertically)
                         ) {
-                            Text(
-                                database.fileName.split(".").first(),
-                                fontSize = 28.sp
-                            )
-                            Text(
-                                "Last modified on 12/12/2021 at 12:35",
-                                fontSize = 12.sp
-                            )
+                            Text(database.fileName.split(".").first(),fontSize = 28.sp)
+                            Text("Last modified on 12/12/2021 at 12:35", fontSize = 12.sp)
                         }
                     }
                 }
             }
             NewDatabase { fileName, password ->
-                val newDatabase = Database.newDatabase(fileName, password, fileManager)
+                val newDatabase = Database.newDatabase(fileName, password, fm)
 
                 navigator.replace(DatabaseScreen(newDatabase))
             }
