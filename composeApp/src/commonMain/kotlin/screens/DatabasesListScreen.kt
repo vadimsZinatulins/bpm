@@ -117,7 +117,7 @@ class DatabasesListScreen : Screen {
                     ) {
                         Icon(
                             Icons.Default.Storage,
-                            "New Database",
+                            contentDescription = database.fileName.split(".").first(),
                             tint = Color(0.5f, 0.8f, 1.0f),
                             modifier = Modifier.size(40.dp)
                         )

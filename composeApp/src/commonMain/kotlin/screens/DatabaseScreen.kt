@@ -36,18 +36,22 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import data.Credential
 import data.Database
+import data.Group
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import utils.ServiceLocator
+import utils.ui.ICredentialDecoratorService
+import utils.ui.IGroupsDecoratorService
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalFoundationApi::class)
 class DatabaseScreen(val database: Database) : Screen {
     @Composable
     override fun Content() {
-        // val decorator = ServiceLocator.getService<ICredentialDecoratorService>("CredentialDecorator")
         val state = rememberLazyListState()
         val scope = rememberCoroutineScope()
 
@@ -58,19 +62,21 @@ class DatabaseScreen(val database: Database) : Screen {
         }
 
         BoxWithConstraints {
-            if (this.maxWidth > 700.dp) {
+            if (this.maxWidth > 600.dp) {
                 Row {
                     Groups(
                         modifier = Modifier
                             .fillMaxHeight()
                             .width(300.dp)
-                            .background(Color.Blue.copy(alpha = 0.05f))
+                            .background(Color.Blue.copy(alpha = 0.05f)),
+                        {}
                     )
                     Credentials(
                         modifier = Modifier
                             .fillMaxHeight()
                             .weight(1f)
-                            .background(Color.Blue.copy(alpha = 0.025f))
+                            .background(Color.Blue.copy(alpha = 0.025f)),
+                        null
                     )
                 }
             } else {
@@ -85,7 +91,8 @@ class DatabaseScreen(val database: Database) : Screen {
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(this@BoxWithConstraints.maxWidth)
-                                .background(Color.Blue.copy(alpha = 0.05f))
+                                .background(Color.Blue.copy(alpha = 0.05f)),
+                            {}
                         ) {
                             scrollTo(1)
                         }
@@ -95,7 +102,8 @@ class DatabaseScreen(val database: Database) : Screen {
                             modifier = Modifier
                                 .fillMaxHeight()
                                 .width(this@BoxWithConstraints.maxWidth)
-                                .background(Color.Blue.copy(alpha = 0.025f))
+                                .background(Color.Blue.copy(alpha = 0.025f)),
+                            null
                         ) {
                             scrollTo(0)
                         }
@@ -106,7 +114,27 @@ class DatabaseScreen(val database: Database) : Screen {
     }
 
     @Composable
-    private fun Groups(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    private fun Groups(
+        modifier: Modifier = Modifier,
+        onSelectedChange: (Group) -> Unit,
+        onClick: (() -> Unit)? = null
+    ) {
+        val groupDecoratorService =
+            ServiceLocator.getService<IGroupsDecoratorService>("GroupsDecorator")
+
+        val groups = listOf(
+            Group("Group 1", listOf(
+                Group("Group 1", emptyList(), emptyList()),
+                Group("Group 2", emptyList(), emptyList()),
+                Group("Group 3", emptyList(), emptyList()),
+            ), listOf(
+                Credential("Credential 1", "username", "password", ""),
+            )),
+            Group("Group 2", emptyList(), emptyList()),
+            Group("Group 3", emptyList(), emptyList()),
+            Group("Group 4", emptyList(), emptyList()),
+        )
+
         Column(modifier) {
             onClick?.let {
                 Row(
@@ -126,12 +154,19 @@ class DatabaseScreen(val database: Database) : Screen {
                 }
             }
 
-            Text("Groups")
+            groupDecoratorService.decorate(groups, {  })()
         }
     }
 
     @Composable
-    private fun Credentials(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+    private fun Credentials(
+        modifier: Modifier = Modifier,
+        selectedGroup: Group?,
+        onClick: (() -> Unit)? = null
+    ) {
+        val decorator = ServiceLocator
+            .getService<ICredentialDecoratorService>("CredentialDecorator")
+
         Column(modifier) {
             onClick?.let {
                 Row(
@@ -149,8 +184,9 @@ class DatabaseScreen(val database: Database) : Screen {
                             .border(2.dp, Color(0xFF7AAFD3), CircleShape)
                     )
                 }
+                selectedGroup?.let {
+                }
             }
-            Text("Credentials")
         }
     }
 }
