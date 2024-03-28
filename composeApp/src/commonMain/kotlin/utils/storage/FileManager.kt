@@ -1,7 +1,12 @@
 package utils.storage
 
+import data.NewDatabase
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 
 abstract class FileManager {
     /**
@@ -20,6 +25,34 @@ abstract class FileManager {
             it.write(content)
         }
     }
+
+    fun saveDatabase(database: NewDatabase) {
+        val byteArray = serializeDatabase(database)
+
+        saveFile(database.name, byteArray)
+    }
+
+    fun loadDatabase(fileName: String): NewDatabase {
+        val byteArray = readFile(fileName)
+
+        return deserializeDatabase(byteArray)
+    }
+
+    fun deleteDatabase(database: NewDatabase) {
+        deleteFile("${database.name}.bpm")
+    }
+
+    private fun serializeDatabase(database: NewDatabase) = ByteArrayOutputStream().use {
+        ObjectOutputStream(it).use { stream ->
+            stream.writeObject(database)
+            stream.flush()
+            it.toByteArray()
+        }
+    }
+
+    private fun deserializeDatabase(byteArray: ByteArray) = ByteArrayInputStream(byteArray).use {
+        ObjectInputStream(it).use { stream -> stream.readObject() }
+    }.cast<NewDatabase>()
 
     /**
      * Read file from bpm directory
@@ -47,4 +80,6 @@ abstract class FileManager {
     fun deleteFile(fileName: String) {
         File(bpmDirectory, fileName).delete()
     }
+
+    inline fun <reified T : Any> Any.cast(): T = this as T
 }

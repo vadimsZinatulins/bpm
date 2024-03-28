@@ -24,32 +24,104 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Icon
+import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowCircleLeft
 import androidx.compose.material.icons.filled.ArrowCircleRight
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import data.Credential
 import data.Database
 import data.Group
+import data.NewDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import utils.ServiceLocator
+import utils.storage.FileManager
 import utils.ui.ICredentialDecoratorService
 import utils.ui.IGroupsDecoratorService
 import java.util.concurrent.Executors
 
-@OptIn(ExperimentalFoundationApi::class)
-class DatabaseScreen(val database: Database) : Screen {
+// @OptIn(ExperimentalFoundationApi::class)
+class DatabaseScreen(val database: NewDatabase) : Screen {
+    @Composable
+    override fun Content() {
+        val navigator = LocalNavigator.currentOrThrow
+
+        Column {
+            Row {
+                Text("Database: ${database.name}")
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Database",
+                    modifier = Modifier.clickable {
+                        val fileManager = ServiceLocator.getService<FileManager>("FileManager")
+                        fileManager.deleteDatabase(database)
+
+                        navigator.replace(DatabasesScreen())
+                    }
+                )
+            }
+            ChangeName()
+        }
+    }
+
+    @Composable
+    private fun ChangeName() {
+        val navigator = LocalNavigator.currentOrThrow
+
+        var newName by remember { mutableStateOf("") }
+
+        Row {
+            OutlinedTextField(
+                value = newName,
+                onValueChange = { newName = it },
+                label = { Text("New name") }
+            )
+            Icon(
+                imageVector = Icons.Default.Save,
+                contentDescription = "Change name",
+                modifier = Modifier.clickable {
+                    val newDatabase = changeDatabaseName(newName)
+                    navigator.replace(DatabaseScreen(newDatabase))
+
+                    newName = ""
+                }
+            )
+        }
+
+    }
+
+    private fun changeDatabaseName(newName: String) : NewDatabase {
+        val fileManager = ServiceLocator.getService<FileManager>("FileManager")
+
+        val newDatabase = NewDatabase(newName)
+
+        fileManager.saveDatabase(newDatabase)
+        fileManager.deleteDatabase(database)
+
+        return newDatabase
+    }
+
+    /*
     @Composable
     override fun Content() {
         val state = rememberLazyListState()
@@ -189,4 +261,5 @@ class DatabaseScreen(val database: Database) : Screen {
             }
         }
     }
+    */
 }

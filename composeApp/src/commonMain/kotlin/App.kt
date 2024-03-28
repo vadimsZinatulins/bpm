@@ -22,17 +22,12 @@ import cafe.adriel.voyager.navigator.Navigator
 import components.Background
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import screens.DatabasesListScreen
+import screens.DatabasesScreen
 import screens.Home
-import utils.storage.FileManager
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Launch
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.ui.Alignment
@@ -44,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import data.Database
 import screens.DatabaseScreen
+import utils.DatabasesManager
 
 @OptIn(ExperimentalResourceApi::class)
 @Composable
@@ -68,15 +64,18 @@ fun App() {
                     ) {
                         val lastItem = navigator.lastItem
 
+                        DatabasesManager.databases.map {
+
+                        }
                         Database.databases.filter { database -> database.isOpen } .map {
                             val name = it.fileName.split('.').first()
                             val icon = Icons.Default.Storage
-                            val isSelected = lastItem is DatabaseScreen && lastItem.database.fileName == it.fileName
+                            val isSelected = lastItem is DatabaseScreen && lastItem.database.name == it.fileName
 
-                            item { BottomBarButton(name, icon, isSelected) { navigator.replace(DatabaseScreen(it)) } }
+                            item { BottomBarButton(name, icon, isSelected) { /* navigator.replace(DatabaseScreen(it)) */ } }
                         }
 
-                        item { BottomBarButton("Open", Icons.Default.Lock, isSelected = lastItem is DatabasesListScreen ) { navigator.replace(DatabasesListScreen()) } }
+                        item { BottomBarButton("Open", Icons.Default.Lock, isSelected = lastItem is DatabasesScreen ) { navigator.replace(DatabasesScreen()) } }
                         item { BottomBarButton("Settings", Icons.Default.Settings) {  } }
                     }
                 }
