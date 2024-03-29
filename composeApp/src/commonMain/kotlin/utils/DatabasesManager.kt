@@ -1,10 +1,10 @@
 package utils
 
-import data.NewDatabase
+import data.Database
 import utils.storage.FileManager
 
 object DatabasesManager {
-    var databases: List<NewDatabase> = emptyList()
+    var databases: List<Database> = emptyList()
         private set
 
     /**
@@ -13,7 +13,7 @@ object DatabasesManager {
     fun initialize() {
         val fileManager = ServiceLocator.getService<FileManager>("FileManager")
 
-        databases = fileManager.listFiles().map { NewDatabase(it.name) }
-        databases += listOf("database1", "database2", "database3").map { NewDatabase(it) }
+        databases = fileManager.listFiles().map { Database(it.name) }
+        databases += listOf("database1", "database2", "database3").map { Database(it) }
     }
 }

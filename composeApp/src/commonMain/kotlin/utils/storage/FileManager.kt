@@ -1,6 +1,6 @@
 package utils.storage
 
-import data.NewDatabase
+import data.Database
 import utils.security.BPMCipher
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -27,37 +27,37 @@ abstract class FileManager {
         }
     }
 
-    fun saveDatabase(database: NewDatabase) {
+    fun saveDatabase(database: Database) {
         val byteArray = serializeDatabase(database)
 
         saveFile(database.name, byteArray)
     }
 
-    fun saveDatabase(database: NewDatabase, password: String) {
+    fun saveDatabase(database: Database, password: String) {
         val byteArray = serializeDatabase(database)
         val encryptedContent = BPMCipher.encrypt(byteArray, password)
 
         saveFile(database.name, encryptedContent)
     }
 
-    fun loadDatabase(fileName: String): NewDatabase {
+    fun loadDatabase(fileName: String): Database {
         val byteArray = readFile(fileName)
 
         return deserializeDatabase(byteArray)
     }
 
-    fun loadDatabase(fileName: String, password: String): NewDatabase {
+    fun loadDatabase(fileName: String, password: String): Database {
         val encryptedContent = readFile(fileName)
         val byteArray = BPMCipher.decrypt2(encryptedContent, password)
 
         return deserializeDatabase(byteArray)
     }
 
-    fun deleteDatabase(database: NewDatabase) {
+    fun deleteDatabase(database: Database) {
         deleteFile("${database.name}.bpm")
     }
 
-    private fun serializeDatabase(database: NewDatabase) = ByteArrayOutputStream().use {
+    private fun serializeDatabase(database: Database) = ByteArrayOutputStream().use {
         ObjectOutputStream(it).use { stream ->
             stream.writeObject(database)
             stream.flush()
@@ -67,7 +67,7 @@ abstract class FileManager {
 
     private fun deserializeDatabase(byteArray: ByteArray) = ByteArrayInputStream(byteArray).use {
         ObjectInputStream(it).use { stream -> stream.readObject() }
-    }.cast<NewDatabase>()
+    }.cast<Database>()
 
     /**
      * Read file from bpm directory

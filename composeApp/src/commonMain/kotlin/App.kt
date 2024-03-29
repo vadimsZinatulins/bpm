@@ -29,7 +29,6 @@ import androidx.compose.material.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Storage
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -37,8 +36,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import data.Database
-import screens.DatabaseScreen
 import utils.DatabasesManager
 
 @OptIn(ExperimentalResourceApi::class)
@@ -65,14 +62,12 @@ fun App() {
                         val lastItem = navigator.lastItem
 
                         DatabasesManager.databases.map {
+                            // val name = it.fileName.split('.').first()
+                            // val icon = Icons.Default.Storage
+                            // val isSelected = lastItem is DatabaseScreen && lastItem.database.name == it.fileName
 
-                        }
-                        Database.databases.filter { database -> database.isOpen } .map {
-                            val name = it.fileName.split('.').first()
-                            val icon = Icons.Default.Storage
-                            val isSelected = lastItem is DatabaseScreen && lastItem.database.name == it.fileName
+                            // item { BottomBarButton(name, icon, isSelected) { /* navigator.replace(DatabaseScreen(it)) */ } }
 
-                            item { BottomBarButton(name, icon, isSelected) { /* navigator.replace(DatabaseScreen(it)) */ } }
                         }
 
                         item { BottomBarButton("Open", Icons.Default.Lock, isSelected = lastItem is DatabasesScreen ) { navigator.replace(DatabasesScreen()) } }
