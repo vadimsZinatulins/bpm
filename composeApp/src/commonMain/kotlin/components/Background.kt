@@ -8,6 +8,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 
+val colors = listOf(
+    Color(0xFFB3E5FC),
+    Color(0xFFB3C1FC),
+    Color(0xFFB3FCEF)
+)
+
 @Composable
 fun Background() {
     val colorBase = Color(0xFFB3E5FC)

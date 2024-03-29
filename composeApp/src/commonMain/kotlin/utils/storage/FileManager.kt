@@ -1,7 +1,13 @@
 package utils.storage
 
+import data.Database
+import utils.security.BPMCipher
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 
 abstract class FileManager {
     /**
@@ -20,6 +26,48 @@ abstract class FileManager {
             it.write(content)
         }
     }
+
+    fun saveDatabase(database: Database) {
+        val byteArray = serializeDatabase(database)
+
+        saveFile(database.name, byteArray)
+    }
+
+    fun saveDatabase(database: Database, password: String) {
+        val byteArray = serializeDatabase(database)
+        val encryptedContent = BPMCipher.encrypt(byteArray, password)
+
+        saveFile(database.name, encryptedContent)
+    }
+
+    fun loadDatabase(fileName: String): Database {
+        val byteArray = readFile(fileName)
+
+        return deserializeDatabase(byteArray)
+    }
+
+    fun loadDatabase(fileName: String, password: String): Database {
+        val encryptedContent = readFile(fileName)
+        val byteArray = BPMCipher.decrypt2(encryptedContent, password)
+
+        return deserializeDatabase(byteArray)
+    }
+
+    fun deleteDatabase(database: Database) {
+        deleteFile("${database.name}.bpm")
+    }
+
+    private fun serializeDatabase(database: Database) = ByteArrayOutputStream().use {
+        ObjectOutputStream(it).use { stream ->
+            stream.writeObject(database)
+            stream.flush()
+            it.toByteArray()
+        }
+    }
+
+    private fun deserializeDatabase(byteArray: ByteArray) = ByteArrayInputStream(byteArray).use {
+        ObjectInputStream(it).use { stream -> stream.readObject() }
+    }.cast<Database>()
 
     /**
      * Read file from bpm directory
@@ -47,4 +95,6 @@ abstract class FileManager {
     fun deleteFile(fileName: String) {
         File(bpmDirectory, fileName).delete()
     }
+
+    inline fun <reified T : Any> Any.cast(): T = this as T
 }

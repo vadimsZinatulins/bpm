@@ -49,6 +49,25 @@ object BPMCipher {
         return salt + iv + encryptedContent
     }
 
+    fun encrypt(content: ByteArray, key: String): ByteArray {
+        val secureRandom = SecureRandom()
+
+        val salt = ByteArray(16)
+        secureRandom.nextBytes(salt)
+
+        val iv = ByteArray(16)
+        secureRandom.nextBytes(iv)
+
+        val secretKey = passwordToKey(key, salt)
+
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivSpec)
+        val encryptedContent = cipher.doFinal(content)
+
+        return salt + iv + encryptedContent
+    }
+
     /**
      * Decrypt a string
      * @param content The content to decrypt
@@ -67,5 +86,19 @@ object BPMCipher {
         val decryptedContent = cipher.doFinal(encryptedContent)
 
         return String(decryptedContent)
+    }
+
+    fun decrypt2(content: ByteArray, password: String): ByteArray {
+        val salt = content.copyOfRange(0, 16)
+        val iv = content.copyOfRange(16, 32)
+        val encryptedContent = content.copyOfRange(32, content.size)
+
+        val secretKey = passwordToKey(password, salt)
+
+        val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
+        val ivSpec = IvParameterSpec(iv)
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, ivSpec)
+
+        return cipher.doFinal(encryptedContent)
     }
 }

@@ -39,7 +39,7 @@ kotlin {
             implementation(libs.voyager.kodein)
             implementation(libs.voyager.rxjava)
             implementation(libs.androidx.security.crypto)
-            implementation ("androidx.compose.material:material-icons-extended:1.6.3")
+            implementation (libs.androidx.material.icons.extended)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
