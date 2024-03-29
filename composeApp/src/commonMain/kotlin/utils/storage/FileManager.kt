@@ -1,6 +1,7 @@
 package utils.storage
 
 import data.NewDatabase
+import utils.security.BPMCipher
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -32,8 +33,22 @@ abstract class FileManager {
         saveFile(database.name, byteArray)
     }
 
+    fun saveDatabase(database: NewDatabase, password: String) {
+        val byteArray = serializeDatabase(database)
+        val encryptedContent = BPMCipher.encrypt(byteArray, password)
+
+        saveFile(database.name, encryptedContent)
+    }
+
     fun loadDatabase(fileName: String): NewDatabase {
         val byteArray = readFile(fileName)
+
+        return deserializeDatabase(byteArray)
+    }
+
+    fun loadDatabase(fileName: String, password: String): NewDatabase {
+        val encryptedContent = readFile(fileName)
+        val byteArray = BPMCipher.decrypt2(encryptedContent, password)
 
         return deserializeDatabase(byteArray)
     }

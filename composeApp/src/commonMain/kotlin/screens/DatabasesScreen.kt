@@ -18,6 +18,7 @@ import cafe.adriel.voyager.core.screen.Screen
 import utils.storage.FileManager
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.AlertDialog
 import androidx.compose.material.Button
 import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import components.GenericDialog
@@ -61,38 +63,22 @@ class DatabasesScreen : Screen {
     override fun Content() {
         var databases by remember { mutableStateOf(fileManager.listFiles().map { it.name }) }
 
-        var newDatabaseName by remember { mutableStateOf("") }
-
         Column(modifier = Modifier.fillMaxSize()) {
             ListDatabases(databases) { databaseToDelete ->
                 fileManager.deleteFile(databaseToDelete)
 
                 databases = fileManager.listFiles().map { it.name }
             }
+            NewDatabaseButton()
 
-            OutlinedTextField(
-                value = newDatabaseName,
-                onValueChange = { newDatabaseName = it},
-                label = { Text("Database Name") },
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
-            )
-            Button(onClick = {
-                // create new database
-                val newDatabase = NewDatabase(newDatabaseName)
-
-                // save new database
-                fileManager.saveDatabase(newDatabase)
-
-                // refresh databases
-                databases = fileManager.listFiles().map { it.name }
-            }) {
-                Icon(Icons.Default.Add, "New Database")
-            }
         }
     }
 
     @Composable
-    private fun ListDatabases(databases: List<String>, onDatabaseDelete: (database: String) -> Unit) {
+    private fun ListDatabases(
+        databases: List<String>,
+        onDatabaseDelete: (database: String) -> Unit
+    ) {
         LazyColumn {
             items(databases) { database ->
                 DatabaseRow(database, onDatabaseDelete)
@@ -102,6 +88,8 @@ class DatabasesScreen : Screen {
 
     @Composable
     private fun DatabaseRow(database: String, onDelete: (database: String) -> Unit) {
+        var showDialog by remember { mutableStateOf(false) }
+
         val navigator = LocalNavigator.currentOrThrow
 
         Row {
@@ -114,11 +102,131 @@ class DatabasesScreen : Screen {
 
             Text(
                 text = database.split(".").first(),
-                modifier = Modifier.clickable {
-                    val db = fileManager.loadDatabase(database)
+                modifier = Modifier.clickable { showDialog = true }
+            )
+
+            OpenDatabaseDialog(
+                showDialog = showDialog,
+                onConfirm = { password ->
+                    val db = fileManager.loadDatabase(database, password)
                     navigator.replace(DatabaseScreen(db))
-                }
+                },
+                onCancel = { showDialog = false }
             )
         }
+    }
+
+    @Composable
+    private fun NewDatabaseButton() {
+        var showDialog by remember { mutableStateOf(false) }
+
+        val navigator = LocalNavigator.currentOrThrow
+
+        Button(onClick = { showDialog = true }) {
+            Icon(Icons.Default.Add, "New Database")
+        }
+
+        NewDatabaseDialog(
+            showDialog, { databaseName, databasePassword ->
+                val newDatabase = createDatabase(databaseName, databasePassword)
+
+                navigator.replace(DatabaseScreen(newDatabase))
+            }, {
+                showDialog = false
+            }
+        )
+    }
+
+    @Composable
+    private fun NewDatabaseDialog(
+        showDialog: Boolean,
+        onConfirm: (databaseName: String, databasePassword: String) -> Unit,
+        onCancel: () -> Unit
+    ) {
+        var databaseName by remember { mutableStateOf("") }
+        var databasePassword by remember { mutableStateOf("") }
+
+        if (showDialog) {
+            SimpleDialog(
+                title = "New Database",
+                onConfirm = { onConfirm(databaseName, databasePassword) },
+                onCancel = onCancel
+            ) {
+                Column {
+                    OutlinedTextField(
+                        value = databaseName,
+                        onValueChange = { databaseName = it },
+                        label = { Text("Database Name") }
+                    )
+
+                    OutlinedTextField(
+                        value = databasePassword,
+                        onValueChange = { databasePassword = it },
+                        label = { Text("Password") },
+                        visualTransformation = PasswordVisualTransformation()
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun OpenDatabaseDialog(
+        showDialog: Boolean,
+        onConfirm: (databasePassword: String) -> Unit,
+        onCancel: () -> Unit
+    ) {
+        var databasePassword by remember { mutableStateOf("") }
+
+        if (showDialog) {
+            SimpleDialog(
+                title = "Open Database",
+                onConfirm = { onConfirm(databasePassword) },
+                onCancel = onCancel
+            ) {
+                OutlinedTextField(
+                    value = databasePassword,
+                    onValueChange = { databasePassword = it },
+                    label = { Text("Password") },
+                    visualTransformation = PasswordVisualTransformation()
+                )
+            }
+        }
+    }
+
+    @Composable
+    private fun SimpleDialog(
+        title: String,
+        onConfirm: () -> Unit,
+        onCancel: () -> Unit,
+        content: @Composable () -> Unit
+    ) {
+        AlertDialog(
+            onDismissRequest = onCancel,
+            title = { Text(title) },
+            text = { content() },
+            confirmButton = {
+                Button(onClick = onConfirm) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                Button(onClick = onCancel) {
+                    Text("Cancel")
+                }
+            },
+            properties = DialogProperties(
+                dismissOnBackPress = true,
+                dismissOnClickOutside = true
+            )
+        )
+    }
+
+    private fun createDatabase(databaseName: String, databasePassword: String): NewDatabase {
+        val newDatabase = NewDatabase(databaseName)
+
+        fileManager.saveDatabase(newDatabase, databasePassword)
+
+        return newDatabase
     }
 }
