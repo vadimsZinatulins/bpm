@@ -1,0 +1,15 @@
+name: Build and Release
+on: 
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: fwilhe2/setup-kotlin@0.9.0
+    - uses: gradle/actions@v3.1.0
+    - name: build
+      run: ./gradlew build
