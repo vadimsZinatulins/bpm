@@ -1,0 +1,79 @@
+name: Build and Release
+on: 
+  push:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '18'
+    - uses: gradle/actions/setup-gradle@v3
+    - name: build
+      run: ./gradlew packageReleaseMsi
+    - uses: actions/upload-artifact@v4
+      with:
+        name: windows-msi
+        path: composeApp/build/compose/binaries/main-release/msi/*.msi
+        overwrite: true
+        if-no-files-found: error
+
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '18'
+    - uses: gradle/actions/setup-gradle@v3
+    - name: set permissions
+      run: chmod +x gradlew && git update-index --chmod=+x gradlew
+    - name: build
+      run: ./gradlew packageReleaseDeb
+    - uses: actions/upload-artifact@v4
+      with:
+        name: linux-deb
+        path: composeApp/build/compose/binaries/main-release/deb/*.deb
+        overwrite: true
+        if-no-files-found: error
+        
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '18'
+    - uses: gradle/actions/setup-gradle@v3
+    - name: set permissions
+      run: chmod +x gradlew && git update-index --chmod=+x gradlew
+    - name: build
+      run: ./gradlew assembleRelease
+    - uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: composeApp/build/outputs/apk/release/*.apk
+        overwrite: true
+        if-no-files-found: error
+
+  release:
+    needs: [build-windows, build-deb, build-android]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/download-artifact@v4
+    - name: Display structure of downloaded files
+      run: tree .
+    - uses: softprops/action-gh-release@v2
+      with:
+        token: ${{ secrets.SECRET_TOKEN }}
+        tag_name: "Current Release"
+        files: |
+          android-apk/*.apk
+          linux-deb/*.deb
+          windows-msi/*.msi

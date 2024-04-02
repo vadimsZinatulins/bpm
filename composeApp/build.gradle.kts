@@ -87,8 +87,17 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.vadims.application.bpm"
+            packageName = "BasicPasswordManager"
             packageVersion = "1.0.0"
+            
+            buildTypes {
+                release {
+                    proguard {
+                        version = "7.4.0"
+                        isEnabled = false
+                    }
+                }
+            }
         }
     }
 }
