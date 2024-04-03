@@ -72,7 +72,7 @@ jobs:
     - uses: softprops/action-gh-release@v2
       with:
         token: ${{ secrets.SECRET_TOKEN }}
-        tag_name: "Current Release"
+        tag_name: "Release"
         files: |
           android-apk/*.apk
           linux-deb/*.deb
